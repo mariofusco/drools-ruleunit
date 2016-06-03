@@ -1,0 +1,9 @@
+import org.drools.ruleunit.*
+
+global DataSource data;
+
+rule Adult when
+    Person(age >= 18, $name : name) from data.get("persons")
+then
+    System.out.println($name + " is adult");
+end
