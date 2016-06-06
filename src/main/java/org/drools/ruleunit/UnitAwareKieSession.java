@@ -16,33 +16,40 @@
 
 package org.drools.ruleunit;
 
+import org.drools.ruleunit.reactive.ReactiveCollection;
 import org.kie.api.runtime.KieSession;
+import org.kie.api.runtime.rule.EntryPoint;
 
+import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.stream.Stream;
 
 public class UnitAwareKieSession {
     private final KieSession ksession;
 
-    private final DataSource data = new DataSource();
-
     public UnitAwareKieSession( KieSession ksession ) {
         this.ksession = ksession;
-        ksession.setGlobal( "data", data );
     }
 
     public <T extends RuleUnit> T exec(Class<T> unitClass, Object... args) {
         String unitName = unitClass.getSimpleName();
         T unit = createUnit( unitClass, args );
-        data.setCurrentRuleUnit( unit );
-
-        // TODO should we use a filter instead of an agenda group?
-        // ksession.fireAllRules( match -> ( (RuleImpl) match.getRule() ).getAgendaGroup().equals( unitName ) );
-
-        ksession.getAgenda().getAgendaGroup( unitName ).setFocus();
-        ksession.fireAllRules();
-
+        bindData( unit );
+        ksession.fireAllRules( m -> m.getRule().getMetaData().get(RuleUnit.RULE_ATTRIBUTE_NAME).equals( unitName ) );
         return unit;
+    }
+
+    public <T extends RuleUnit> T execUntilHalt(Class<T> unitClass, Object... args) {
+        String unitName = unitClass.getSimpleName();
+        T unit = createUnit( unitClass, args );
+        bindData( unit );
+        new Thread( () -> ksession.fireUntilHalt( m -> m.getRule().getMetaData().get(RuleUnit.RULE_ATTRIBUTE_NAME).equals( unitName ) ) ).start();
+        return unit;
+    }
+
+    public void halt() {
+        ksession.halt();
     }
 
     private <T extends RuleUnit> T createUnit(Class<T> unitClass, Object... args) {
@@ -58,5 +65,44 @@ public class UnitAwareKieSession {
                      } )
                      .orElseThrow( () -> new RuntimeException( "Cannot find constructor for " + unitClass +
                                                                " with args " + Arrays.toString( args ) ) );
+    }
+
+    private void bindData( RuleUnit unit ) {
+        Stream.of( unit.getClass().getFields() )
+              .map( f -> new EntryPointDataSource(unit, ksession.getEntryPoint( f.getName() ), f ) )
+              .filter( EntryPointDataSource::isValid )
+              .forEach( EntryPointDataSource::bindData );
+    }
+
+    private static class EntryPointDataSource {
+        private final RuleUnit unit;
+        private final EntryPoint ep;
+        private final Field field;
+
+        private EntryPointDataSource( RuleUnit unit, EntryPoint ep, Field field ) {
+            this.unit = unit;
+            this.ep = ep;
+            this.field = field;
+        }
+
+        public boolean isValid() {
+            return ep != null;
+        }
+
+        public void bindData() {
+            try {
+                Object data = field.get(unit);
+                if (data instanceof Collection) {
+                    ( (Collection) data ).stream().forEach( ep::insert );
+                    if (data instanceof ReactiveCollection) {
+                        ( (ReactiveCollection) data ).register( ep::insert );
+                    }
+                } else {
+                    ep.insert( data );
+                }
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException( e );
+            }
+        }
     }
 }

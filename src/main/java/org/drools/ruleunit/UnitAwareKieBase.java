@@ -33,7 +33,7 @@ public class UnitAwareKieBase {
                 .forEach( r -> {
                     RuleImpl rule = (RuleImpl) r;
                     String unitName = sourcePathToUnit(rule.getResource().getSourcePath());
-                    rule.setAgendaGroup( unitName );
+                    rule.addMetaAttribute( RuleUnit.RULE_ATTRIBUTE_NAME, unitName );
                 });
     }
 

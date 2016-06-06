@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-package org.drools.ruleunit;
+package org.drools.ruleunit.reactive;
 
-public interface RuleUnit {
-    String RULE_ATTRIBUTE_NAME = "RuleUnit";
+public interface Observable {
+    void notifyAdd(Object obj);
 }

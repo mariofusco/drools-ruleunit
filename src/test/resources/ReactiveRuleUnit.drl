@@ -1,6 +1,6 @@
 import org.drools.ruleunit.*
 
-rule Adult when
+rule ReactiveAdult when
     Person(age >= 18, $name : name) from entry-point persons
 then
     System.out.println($name + " is adult");

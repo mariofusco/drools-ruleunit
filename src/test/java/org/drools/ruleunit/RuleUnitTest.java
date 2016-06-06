@@ -16,10 +16,12 @@
 
 package org.drools.ruleunit;
 
+import org.drools.ruleunit.reactive.ReactiveCollection;
 import org.junit.Test;
 import org.kie.api.KieServices;
 import org.kie.api.runtime.KieContainer;
 
+import java.util.Collection;
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -28,11 +30,7 @@ public class RuleUnitTest {
 
     @Test
     public void test() {
-        KieServices ks = KieServices.Factory.get();
-        KieContainer kc = ks.newKieClasspathContainer();
-
-        UnitAwareKieBase kbase = new UnitAwareKieBase( kc.getKieBase() );
-        UnitAwareKieSession ksession = kbase.newKieSession();
+        UnitAwareKieSession ksession = createUnitAwareKieSession();
 
         List<Person> persons = asList( new Person( "Mario", 42 ),
                                        new Person( "Marilena", 44 ),
@@ -43,6 +41,31 @@ public class RuleUnitTest {
 
         System.out.println( "--- Executing " + AnotherRuleUnit.class.getSimpleName() );
         ksession.exec( AnotherRuleUnit.class, persons );
+    }
+
+    @Test
+    public void testReactive() throws Exception {
+        UnitAwareKieSession ksession = createUnitAwareKieSession();
+
+        Collection<Person> persons = new ReactiveCollection<>();
+        ksession.execUntilHalt( ReactiveRuleUnit.class, persons );
+
+        persons.add( new Person( "Mario", 42 ) );
+        Thread.sleep(1000L);
+        persons.add( new Person( "Sofia", 4 ) );
+        Thread.sleep(1000L);
+        persons.add( new Person( "Marilena", 44 ) );
+        Thread.sleep(1000L);
+
+        ksession.halt();
+    }
+
+    private UnitAwareKieSession createUnitAwareKieSession() {
+        KieServices ks = KieServices.Factory.get();
+        KieContainer kc = ks.newKieClasspathContainer();
+
+        UnitAwareKieBase kbase = new UnitAwareKieBase( kc.getKieBase() );
+        return kbase.newKieSession();
     }
 
 }

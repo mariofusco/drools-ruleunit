@@ -16,18 +16,12 @@
 
 package org.drools.ruleunit;
 
-public class DataSource {
-    private RuleUnit currentRuleUnit;
+import java.util.Collection;
 
-    public RuleUnit getCurrentRuleUnit() {
-        return currentRuleUnit;
-    }
+public class ReactiveRuleUnit implements RuleUnit {
+    public Collection<Person> persons;
 
-    public void setCurrentRuleUnit( RuleUnit currentRuleUnit ) {
-        this.currentRuleUnit = currentRuleUnit;
-    }
-
-    public Object get(String data) throws NoSuchFieldException, IllegalAccessException {
-        return currentRuleUnit.getClass().getField( data ).get( currentRuleUnit );
+    public ReactiveRuleUnit(Collection<Person> persons) {
+        this.persons = persons;
     }
 }

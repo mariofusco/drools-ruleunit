@@ -1,9 +1,7 @@
 import org.drools.ruleunit.*
 
-global DataSource data;
-
 rule NotAdult when
-    Person(age < 18, $name : name) from data.get("persons")
+    Person(age < 18, $name : name) from entry-point persons
 then
     System.out.println($name + " is not adult");
 end
