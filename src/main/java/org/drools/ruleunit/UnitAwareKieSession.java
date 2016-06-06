@@ -16,6 +16,7 @@
 
 package org.drools.ruleunit;
 
+import org.drools.core.common.InternalAgendaGroup;
 import org.drools.ruleunit.reactive.ReactiveCollection;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.rule.EntryPoint;
@@ -33,18 +34,24 @@ public class UnitAwareKieSession {
     }
 
     public <T extends RuleUnit> T exec(Class<T> unitClass, Object... args) {
-        String unitName = unitClass.getSimpleName();
-        T unit = createUnit( unitClass, args );
-        bindData( unit );
-        ksession.fireAllRules( m -> m.getRule().getMetaData().get(RuleUnit.RULE_ATTRIBUTE_NAME).equals( unitName ) );
+        T unit = setupUnit( unitClass, args );
+        ksession.fireAllRules();
         return unit;
     }
 
     public <T extends RuleUnit> T execUntilHalt(Class<T> unitClass, Object... args) {
+        T unit = setupUnit( unitClass, args );
+        new Thread( () -> ksession.fireUntilHalt() ).start();
+        return unit;
+    }
+
+    private <T extends RuleUnit> T setupUnit( Class<T> unitClass, Object[] args ) {
         String unitName = unitClass.getSimpleName();
         T unit = createUnit( unitClass, args );
         bindData( unit );
-        new Thread( () -> ksession.fireUntilHalt( m -> m.getRule().getMetaData().get(RuleUnit.RULE_ATTRIBUTE_NAME).equals( unitName ) ) ).start();
+        InternalAgendaGroup agendaGroup = (InternalAgendaGroup) ksession.getAgenda().getAgendaGroup( unitName );
+        agendaGroup.setAutoDeactivate( false );
+        agendaGroup.setFocus();
         return unit;
     }
 
